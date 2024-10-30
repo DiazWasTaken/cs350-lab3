@@ -26,3 +26,6 @@ clean cls:
 
 tar:
 	tar cvfa bin_file_${LOGNAME}.tar.gz *.[ch] [mM]akefile
+
+git:
+	git
