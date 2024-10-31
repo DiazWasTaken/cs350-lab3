@@ -6,6 +6,8 @@ NOTE****
 10/29/2024
 today the goal in code party is to get at least the short table of contents done
 NOTE**** we have completed the getopt input of filename
+10/30/24
+today we want to finish long table of contents
 */
 
 #include <stdlib.h>
@@ -16,6 +18,10 @@ NOTE**** we have completed the getopt input of filename
 #include <md5.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <pwd.h>
+#include <sys/types.h>
+#include <grp.h>
 
 #include "viktar.h"
 
@@ -29,6 +35,15 @@ int main(int argc, char *argv[])
 //variables 
 	char *viktarFile = NULL;
 	int iarch = STDIN_FILENO;
+	int tocChoice = 0;
+	int fileMode;
+	struct passwd *pwd;
+	struct group *grp;	
+	
+
+
+
+
 	//parsing command line segment
 	{
 		int opt = 0;
@@ -45,6 +60,7 @@ int main(int argc, char *argv[])
 				break;
 			case 'T':// Long table of contents
 				printf("showing case T\n");
+				tocChoice++;
 				break;
 			case 'f':// specify the name of viktar file
 				printf("showing case f\n");
@@ -59,7 +75,7 @@ int main(int argc, char *argv[])
 				printf("	./viktar\n");
 				printf("	Options: xctTf:Vhv\n");
 				printf("		-x		Extract files/files from archive\n");
-				printf("		-c      Create an archive file\n");
+				printf("		-c              Create an archive file\n");
 				printf("		-t		display a short table of contents of the archive file\n");
 				printf("		-T		display a long table of contents of the arhive file\n");
 				printf("		Only one of xctTV can be specified\n");
@@ -67,7 +83,7 @@ int main(int argc, char *argv[])
 				printf("		-V		validate the MD5 values in the viktar file\n");
 				printf("		-v		give verbose diagnostic messages\n");
 				printf("		-h		display this super help message\n");
-				
+				exit(EXIT_SUCCESS);	
 				break;
 			case 'v':// verbose processing
 				printf("verbose is now enabled\n");
@@ -108,14 +124,15 @@ int main(int argc, char *argv[])
 /*
 at this time I want to make that small toc section
 all of this is yoinked from the class slides for viktar
+for both tocs **** im gonna be adding a toc vairable that is either TRUE for small and false for large or other way around
 */
 	// opening the file and setting that file descriptor to iarch
 	if (viktarFile != NULL){
 		iarch = open(viktarFile, O_RDONLY);
 	}
 
-	//char buf[100] = {\0};// it doesnt like this for some reason
-	char buf[100];
+	char buf[100] = "\0";// fixed now | each spot is now null
+	//char buf[100];
 	
 	//now we validate the tag
 	read(iarch, buf, strlen(VIKTAR_TAG));
@@ -128,14 +145,68 @@ all of this is yoinked from the class slides for viktar
 	}
 	
 	viktar_header_t md;// this is a variable for the viktar header meta data
+	viktar_footer_t footer; 
 	//time to process said meta data
 	printf("Contents of viktar file: \"%s\"\n", viktarFile != NULL ? viktarFile: "stdin");
+
+	if (tocChoice == 0){	
+		while (read(iarch, &md, sizeof(viktar_header_t)) > 0){
+			memset(buf, 0, 100);
+			strncpy(buf, md.viktar_name, VIKTAR_MAX_FILE_NAME_LEN);
+			printf("\tfile name: %s\n", buf);
+			lseek(iarch, md.st_size + sizeof(viktar_footer_t), SEEK_CUR);
+		}
+	}
+	else{// now we are in spooky territory im gonna be adlibbing this hopefully nothing dies but ill have a git push in case it does
+		while (read(iarch, &md, sizeof(viktar_header_t)) > 0){
+			memset(buf, 0, 100);
+			strncpy(buf, md.viktar_name, VIKTAR_MAX_FILE_NAME_LEN);
+			printf("\tfile name: %s\n", buf);
+
+			fileMode = md.st_mode;
+			
+			printf("\t\tmode:    ");
+			printf((fileMode & S_IRUSR) ? "r" : "-");
+    			printf((fileMode & S_IWUSR) ? "w" : "-");
+    			printf((fileMode & S_IXUSR) ? "x" : "-");
+    			printf((fileMode & S_IRGRP) ? "r" : "-");
+    			printf((fileMode & S_IWGRP) ? "w" : "-");
+    			printf((fileMode & S_IXGRP) ? "x" : "-");
+    			printf((fileMode & S_IROTH) ? "r" : "-");
+    			printf((fileMode & S_IWOTH) ? "w" : "-");
+    			printf((fileMode & S_IXOTH) ? "x" : "-");
+			printf("\n");
+
+			if ((pwd = getpwuid(md.st_uid)) != NULL)
+				printf("\t\tuser:       %s\n", pwd->pw_name);
+			if ((grp = getgrgid(md.st_gid)) != NULL)
+				printf("\t\tgroup: %s\n", grp->gr_name);
+			
+			printf("\t\tSize:    %ld\n", md.st_size);
+
+			printf("\t\tmtime: %s", ctime(&md.st_mtime));
+			printf("\t\tatime: %s", ctime(&md.st_atime));	
+
+			lseek(iarch, md.st_size, SEEK_CUR);
+			
+			read(iarch, &footer, sizeof(viktar_footer_t));
+			   // Print md5sum_header
+    			printf("MD5 Header: ");
+    			for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
+        			printf("%02x", footer.md5sum_header[i]);
+    			}
+    			printf("\n");
+
+    // Print md5sum_data
+    			printf("MD5 Data: ");
+    			for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
+        			printf("%02x", footer.md5sum_data[i]);
+    			}
+    			printf("\n");
 	
-	while (read(iarch, &md, sizeof(viktar_header_t)) > 0){
-		memset(buf, 0, 100);
-		strncpy(buf, md.viktar_name, VIKTAR_MAX_FILE_NAME_LEN);
-		printf("\tfile name: %s\n", buf);
-		lseek(iarch, md.st_size + sizeof(viktar_footer_t), SEEK_CUR);
+		}
+		
+		
 	}
 	//we have now finished processing the archive members in the file 
 	// now the read should return 0 meaning we hit EOF (end of file)
@@ -144,9 +215,6 @@ all of this is yoinked from the class slides for viktar
 	}		
 //small toc is working as of 10/29/2024
 
-/*
-now we are in spooky territory im gonna be adlibbing this hopefully nothing dies but ill have a git push in case it does
-*/
 
 return EXIT_SUCCESS;
 }
