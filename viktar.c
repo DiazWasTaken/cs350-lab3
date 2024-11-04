@@ -22,27 +22,32 @@ today we want to finish long table of contents
 #include <pwd.h>
 #include <sys/types.h>
 #include <grp.h>
+//#include <bits/getopt_core.h>
 
 #include "viktar.h"
 
+
 static int isVerbose = FALSE;
 
-//prototypes
-void shortTable(char *file);
 
 int main(int argc, char *argv[])
 {
 //variables 
+	//these variables are for making choices with the swtich cases
+	int tocChoice = 0;
+	int validate = 0;
+
+	//these variables are for the actual variables the program needs
 	char *viktarFile = NULL;
 	int iarch = STDIN_FILENO;
-	int tocChoice = 0;
 	int fileMode;
 	struct passwd *pwd;
 	struct group *grp;	
+	viktar_header_t md;// this is a variable for the viktar header meta data
+	viktar_footer_t footer; 
+	char buf[100] = "\0";// fixed now | each spot is now null
+	//char buf[100];
 	
-
-
-
 
 	//parsing command line segment
 	{
@@ -69,6 +74,7 @@ int main(int argc, char *argv[])
 				break;
 			case 'V':// validate content of archive member
 				printf("showing case V\n");
+				validate++;
 				break;
 			case 'h':// show help text and exit | matches prof in file but not terminal 10/28/2024
 				printf("Showing help text\n");
@@ -96,6 +102,8 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
+
+
 // at this point getopt is done processing and there should be only what files I want to work on left on the command line
 // this section of code needs to worry about picking up what files to place within the archive
 	if (optind < argc){
@@ -131,8 +139,7 @@ for both tocs **** im gonna be adding a toc vairable that is either TRUE for sma
 		iarch = open(viktarFile, O_RDONLY);
 	}
 
-	char buf[100] = "\0";// fixed now | each spot is now null
-	//char buf[100];
+	
 	
 	//now we validate the tag
 	read(iarch, buf, strlen(VIKTAR_TAG));
@@ -140,12 +147,10 @@ for both tocs **** im gonna be adding a toc vairable that is either TRUE for sma
 	if (strncmp(buf, VIKTAR_TAG, strlen(VIKTAR_TAG)) != 0) {
 		//this isnt a valid viktar file
 		//print a message making fun of them and dip
-		fprintf(stderr, "lmfao gitgud\n");
+		fprintf(stderr, "This is not a valid viktar file\n");
 		exit(EXIT_FAILURE);
 	}
 	
-	viktar_header_t md;// this is a variable for the viktar header meta data
-	viktar_footer_t footer; 
 	//time to process said meta data
 	printf("Contents of viktar file: \"%s\"\n", viktarFile != NULL ? viktarFile: "stdin");
 
@@ -216,28 +221,17 @@ for both tocs **** im gonna be adding a toc vairable that is either TRUE for sma
 //small toc is working as of 10/29/2024
 
 
+
+//this section of code will validate the md5 data.
+if(validate > 0){
+
+
+}
+
+
+
+
+
 return EXIT_SUCCESS;
 }
-
-
-void shortTable(char *file)
-{
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
