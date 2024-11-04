@@ -1,13 +1,18 @@
 //Brian Cabrera Diaz
 /*
-10/28/2024 
-today my goal is just makefile and make the arg line thing and maybe make it into a function to keep ready for all future assignments and such
-NOTE**** 
-10/29/2024
-today the goal in code party is to get at least the short table of contents done
-NOTE**** we have completed the getopt input of filename
-10/30/24
-today we want to finish long table of contents
+
+
+NOTES FOR HELP
+validation is 247-288
+
+
+help with validate I dont understand how to make that checksum thing
+
+
+
+
+
+
 */
 
 #include <stdlib.h>
@@ -22,12 +27,12 @@ today we want to finish long table of contents
 #include <pwd.h>
 #include <sys/types.h>
 #include <grp.h>
-//#include <bits/getopt_core.h>
 
 #include "viktar.h"
 
+#define BUFFER_SIZE 10
 
-static int isVerbose = FALSE;
+static int isVerbose = TRUE;
 
 
 int main(int argc, char *argv[])
@@ -47,6 +52,19 @@ int main(int argc, char *argv[])
 	viktar_footer_t footer; 
 	char buf[100] = "\0";// fixed now | each spot is now null
 	//char buf[100];
+
+	//unsigned char buffer[BUFFER_SIZE] = {'\0'};
+
+	char formatted_time[256];  // Buffer to hold the formatted date and time
+	time_t mod_time;
+	time_t acc_time;
+	struct tm *timeinfo;
+
+	MD5_CTX header_ctx, data_ctx;
+	off_t remaining_size;
+	uint8_t digest[MD5_DIGEST_LENGTH];
+	ssize_t bytes_read = 0;
+	MD5_CTX context;
 	
 
 	//parsing command line segment
@@ -55,44 +73,38 @@ int main(int argc, char *argv[])
 		while((opt = getopt(argc, argv, OPTIONS)) != -1) {
 			switch (opt) {
 			case 'x':// Extract members
-				printf("showing case x\n");
 				break;
 			case 'c':// create a viktar style archive file
-				printf("showing case c\n");
 				break;
 			case 't':// Short table of contents
-				printf("showing case t\n");
 				break;
 			case 'T':// Long table of contents
-				printf("showing case T\n");
 				tocChoice++;
 				break;
 			case 'f':// specify the name of viktar file
-				printf("showing case f\n");
 				viktarFile = optarg;
-				printf("File name passed in: %s\n", viktarFile);
+				//printf("File name passed in: %s\n", viktarFile);
 				break;
 			case 'V':// validate content of archive member
-				printf("showing case V\n");
 				validate++;
 				break;
 			case 'h':// show help text and exit | matches prof in file but not terminal 10/28/2024
-				printf("Showing help text\n");
+				printf(" help text\n");
 				printf("	./viktar\n");
 				printf("	Options: xctTf:Vhv\n");
-				printf("		-x		Extract files/files from archive\n");
-				printf("		-c              Create an archive file\n");
-				printf("		-t		display a short table of contents of the archive file\n");
-				printf("		-T		display a long table of contents of the arhive file\n");
+				printf("		-x              extract file/files from archive\n");
+				printf("		-c              create an archive file\n");
+				printf("		-t              display a short table of contents of the archive file\n");
+				printf("		-T              display a long table of contents of the archive file\n");
 				printf("		Only one of xctTV can be specified\n");
 				printf("		-f filename use filename as the archive file\n");
 				printf("		-V		validate the MD5 values in the viktar file\n");
 				printf("		-v		give verbose diagnostic messages\n");
-				printf("		-h		display this super help message\n");
+				printf("		-h		display this AMAZING help message\n");
 				exit(EXIT_SUCCESS);	
 				break;
 			case 'v':// verbose processing
-				printf("verbose is now enabled\n");
+				//printf("verbose is now enabled\n");
 				isVerbose = !isVerbose;
 				break;
 			default: 
@@ -114,7 +126,7 @@ int main(int argc, char *argv[])
 	}
 // here will be a verbose statement to check for each file that was passed in
 	if(isVerbose){
-		printf("Here are the files to work for a viktar file\n");
+		//printf("Here are the files to work for a viktar file\n");
 	}
 // this section will worry about the actual name of the archive file
 	if (viktarFile == NULL){
@@ -126,7 +138,7 @@ int main(int argc, char *argv[])
 	}
 // second verbose to print what archive name was passed in
 	if(isVerbose){
-		printf("Entered archive file name: %s\n", viktarFile);
+		//printf("Entered archive file name: %s\n", viktarFile);
 	}
 
 /*
@@ -170,8 +182,8 @@ for both tocs **** im gonna be adding a toc vairable that is either TRUE for sma
 
 			fileMode = md.st_mode;
 			
-			printf("\t\tmode:    ");
-			printf((fileMode & S_IRUSR) ? "r" : "-");
+			printf("\t\tmode:           ");
+			printf((fileMode & S_IRUSR) ? "-r" : "-");
     			printf((fileMode & S_IWUSR) ? "w" : "-");
     			printf((fileMode & S_IXUSR) ? "x" : "-");
     			printf((fileMode & S_IRGRP) ? "r" : "-");
@@ -185,25 +197,33 @@ for both tocs **** im gonna be adding a toc vairable that is either TRUE for sma
 			if ((pwd = getpwuid(md.st_uid)) != NULL)
 				printf("\t\tuser:       %s\n", pwd->pw_name);
 			if ((grp = getgrgid(md.st_gid)) != NULL)
-				printf("\t\tgroup: %s\n", grp->gr_name);
+				printf("\t\tgroup:      %s\n", grp->gr_name);
 			
-			printf("\t\tSize:    %ld\n", md.st_size);
+			printf("\t\tsize:           %ld\n", md.st_size);
+			
+			//mod_time = md.st_mtime.tv_sec;
+			mod_time = md.st_mtim.tv_sec;
+			timeinfo = localtime((&mod_time));
+			strftime(formatted_time, 256, "%Y-%m-%d %H:%M:%S %Z", timeinfo);
+			printf("\t\tmtime:          %s\n", formatted_time);
 
-			printf("\t\tmtime: %s", ctime(&md.st_mtime));
-			printf("\t\tatime: %s", ctime(&md.st_atime));	
+			acc_time = md.st_atim.tv_sec;
+			timeinfo = localtime((&acc_time));
+			strftime(formatted_time, 256, "%Y-%m-%d %H:%M:%S %Z", timeinfo);
+			printf("\t\tatime:          %s\n", formatted_time);	
 
 			lseek(iarch, md.st_size, SEEK_CUR);
 			
 			read(iarch, &footer, sizeof(viktar_footer_t));
 			   // Print md5sum_header
-    			printf("MD5 Header: ");
+    			printf("\t\tmd5 sum header: ");
     			for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
         			printf("%02x", footer.md5sum_header[i]);
     			}
     			printf("\n");
 
-    // Print md5sum_data
-    			printf("MD5 Data: ");
+    			// Print md5sum_data
+    			printf("\t\tmd5 sum data:   ");
     			for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
         			printf("%02x", footer.md5sum_data[i]);
     			}
@@ -218,18 +238,70 @@ for both tocs **** im gonna be adding a toc vairable that is either TRUE for sma
 	if (viktarFile != NULL) { 
 		close(iarch);
 	}		
-//small toc is working as of 10/29/2024
+//small and large toc is working as of 11/4/2024
 
 
 
 //this section of code will validate the md5 data.
-if(validate > 0){
+if (validate > 0) {
+    // Reopen the file if not already open
+    if (viktarFile != NULL) {
+        iarch = open(viktarFile, O_RDONLY);
+        if (iarch < 0) {
+            perror("Error opening viktar file");
+            exit(EXIT_FAILURE);
+        }
+    }
 
+    // Validate the tag at the beginning of the file
+    read(iarch, buf, strlen(VIKTAR_TAG));
+    if (strncmp(buf, VIKTAR_TAG, strlen(VIKTAR_TAG)) != 0) {
+        fprintf(stderr, "This is not a valid viktar file\n");
+        exit(EXIT_FAILURE);
+    }
 
+    // MD5 checksum validation process
+    while (read(iarch, &md, sizeof(viktar_header_t)) > 0) {
+        // Initialize MD5 contexts for header and data
+        MD5Init(&header_ctx);
+        MD5Init(&data_ctx);
+
+        // Calculate MD5 for header
+        MD5Update(&header_ctx, (void *)&md, sizeof(viktar_header_t));// always pass in with this (void *) type whenever you pass in &md NOTE**********
+        MD5Final(digest, &header_ctx);
+
+		//comparing header.st_size with the actual file bytes read from iarch
+        // Read footer and compare header checksum
+        read(iarch, &footer, sizeof(viktar_footer_t));
+        if (memcmp(digest, footer.md5sum_header, MD5_DIGEST_LENGTH) != 0) {
+            fprintf(stderr, "Header checksum mismatch for file %s\n", md.viktar_name);
+            continue; // Skip to the next file if header checksum fails
+        }
+
+        // Calculate MD5 for file data
+		remaining_size = md.st_size;
+        while (remaining_size > 0) {
+            ssize_t chunk_size = (remaining_size < BUFFER_SIZE) ? remaining_size : BUFFER_SIZE;
+            bytes_read = read(iarch, buffer, chunk_size);
+            if (bytes_read <= 0) break;
+
+            MD5Update(&data_ctx, buffer, bytes_read);
+            remaining_size -= bytes_read;
+        }
+        MD5Final(digest, &data_ctx);
+
+        // Compare data checksum
+        if (memcmp(digest, footer.md5sum_data, MD5_DIGEST_LENGTH) != 0) {
+            fprintf(stderr, "Data checksum mismatch for file %s\n", md.viktar_name);
+        } else {
+            printf("File %s passed validation\n", md.viktar_name);
+        }
+    }
+
+    if (viktarFile != NULL) {
+        close(iarch);
+    }
 }
-
-
-
 
 
 return EXIT_SUCCESS;
