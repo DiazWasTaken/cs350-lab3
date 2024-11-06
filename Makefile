@@ -16,10 +16,10 @@ PROGS = $(PROG1)
 all: $(PROGS)
 
 $(PROG1): $(PROG1).o
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ -lmd
 
 $(PROG1).o: $(PROG1).c $(PROG1).h
-	$(CC) $(CFLAGS) -c $<
+	$(CC) $(CFLAGS) -c $< -lmd
 
 clean cls:
 	rm -f $(PROGS) *.o *~ \#*
